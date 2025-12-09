@@ -31,7 +31,7 @@ export default function TechDashboard() {
 
   const fetchTickets = async () => {
     try {
-      const res = await axios.get(`${API}/api/tickets/all`, getAuth());
+      const res = await axios.get(`${API}/api/tickets/assigned/my`, getAuth());
       setTickets(res.data);
     } catch (err) {
       console.log("❌ Unable to fetch tickets", err);
@@ -272,18 +272,18 @@ export default function TechDashboard() {
                         </td>
 
                         <td className="px-4 py-3 flex justify-center gap-2">
-                          <button
+                          {/* <button
                             onClick={() => updateStatus(t._id, "In Progress")}
                             className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
                           >
                             Start
-                          </button>
+                          </button> */}
 
                           <button
                             onClick={() => updateStatus(t._id, "Resolved")}
                             className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg"
                           >
-                            Resolve
+                            Close
                           </button>
                         </td>
 

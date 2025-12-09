@@ -16,13 +16,18 @@ import { useEffect, useState } from "react";
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [tickets, setTickets] = useState([]);
+
+  // ✅ NEW: For manual ticket assigning
+  const [techniciansList, setTechniciansList] = useState([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "employee" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "employee", password: "" });
 
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [createdUserInfo, setCreatedUserInfo] = useState({ email: "", password: "" });
@@ -55,9 +60,23 @@ export default function AdminDashboard() {
     }
   };
 
+  // ✅ NEW: Fetch technicians for manual dropdown
+  const fetchTechnicians = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE}/api/admin/technicians`,
+        getAuthConfig()
+      );
+      setTechniciansList(res.data);
+    } catch (err) {
+      console.log("Failed to fetch technicians", err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchTickets();
+    fetchTechnicians(); // ✅ added
   }, []);
 
   useEffect(() => {
@@ -76,16 +95,38 @@ export default function AdminDashboard() {
 
   const createUser = async () => {
     try {
-      const res = await axios.post(`${API_BASE}/api/admin/create-user`, newUser, getAuthConfig());
+      await axios.post(`${API_BASE}/api/admin/create-user`, newUser, getAuthConfig());
+      // ✅ Backend no longer returns random password, so we use the one admin set
       setCreatedUserInfo({
         email: newUser.email,
-        password: res.data.password,
+        password: newUser.password,
       });
       setShowSuccessPopup(true);
       fetchUsers();
       setShowCreateModal(false);
     } catch (err) {
       alert(err.response?.data?.message || "Failed to create user");
+    }
+  };
+
+  // ✅ NEW: Manual ticket assigning
+  const assignTicketManually = async (ticketId, technicianId) => {
+    if (!technicianId) return;
+    try {
+      setAssignLoading(true);
+      await axios.patch(
+        `${API_BASE}/api/admin/tickets/assign/${ticketId}`,
+        { technicianId },
+        getAuthConfig()
+      );
+      fetchTickets();
+      fetchTechnicians();
+      alert("✅ Ticket Assigned Successfully");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Manual Assignment Failed");
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -104,7 +145,7 @@ export default function AdminDashboard() {
         dark:bg-blue-500/5 blur-[140px] rounded-full"></div>
 
       {/* ========== SIDEBAR ========== */}
-     <aside className="relative z-20 w-64 h-screen flex flex-col justify-between p-6
+      <aside className="relative z-20 w-64 h-screen flex flex-col justify-between p-6
 
         backdrop-blur-2xl bg-white/20 dark:bg-[#ffffff0a]
         border-r border-white/30 dark:border-white/10
@@ -169,7 +210,14 @@ export default function AdminDashboard() {
           <DataTable title="Technicians" loading={loadingUsers} data={technicians} />
         )}
         {activeTab === "tickets" && (
-          <TicketsTable title="Tickets" loading={loadingTickets} data={tickets} />
+          <TicketsTable
+            title="Tickets"
+            loading={loadingTickets}
+            data={tickets}
+            technicians={techniciansList}
+            assignTicketManually={assignTicketManually}
+            assignLoading={assignLoading}
+          />
         )}
 
         {/* MODALS */}
@@ -333,8 +381,8 @@ function DataTable({ title, loading, data, deleteUser }) {
   );
 }
 
-/* ================= TICKETS TABLE ================= */
-function TicketsTable({ title, loading, data }) {
+/* ================= TICKETS TABLE (WITH MANUAL ASSIGN) ================= */
+function TicketsTable({ title, loading, data, technicians, assignTicketManually, assignLoading }) {
   return (
     <div className="backdrop-blur-2xl bg-white/20 dark:bg-white/10 
       p-8 rounded-3xl border border-white/30 dark:border-white/10 shadow-xl">
@@ -345,7 +393,84 @@ function TicketsTable({ title, loading, data }) {
         {title}
       </h2>
 
-      {loading ? <p>Loading...</p> : <Table data={data} />}
+      {loading ? (
+        <p>Loading...</p>
+      ) : data.length === 0 ? (
+        <p>No tickets.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white/30 dark:bg-white/5 border-b border-white/20">
+                <th className="px-4 py-3 text-left">Title</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Priority</th>
+                <th className="px-4 py-3 text-left">Assign Technician</th>
+                <th className="px-4 py-3 text-right">Created</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {data.map((t, i) => (
+                <tr key={t._id}
+                  className={`border-b border-white/10 transition-all
+                    ${i % 2 === 0 ? "bg-white/10 dark:bg-white/5" : ""}
+                    hover:bg-white/20 dark:hover:bg-white/10`}>
+
+                  <td className="px-4 py-3">{t.title}</td>
+
+                  <td className="px-4 py-3">
+                    <span className={`px-3 py-1 rounded-xl text-xs font-medium
+                      ${t.status === "Resolved"
+                        ? "bg-green-100 text-green-700"
+                        : t.status === "Pending"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-blue-100 text-blue-700"
+                      }`}>
+                      {t.status}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span className={`px-3 py-1 rounded-xl text-xs font-medium
+                      ${t.priority === "High"
+                        ? "bg-red-100 text-red-700"
+                        : t.priority === "Medium"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-gray-200 text-gray-700"
+                      }`}>
+                      {t.priority}
+                    </span>
+                  </td>
+
+                  {/* ✅ Manual assign dropdown */}
+                  <td className="px-4 py-3">
+                    <select
+                      className="px-3 py-1 rounded-lg bg-white/40 dark:bg-white/10"
+                      defaultValue=""
+                      onChange={(e) =>
+                        assignTicketManually(t._id, e.target.value)
+                      }
+                      disabled={assignLoading}
+                    >
+                      <option value="" disabled>Select Tech</option>
+                      {technicians.map((tech) => (
+                        <option key={tech._id} value={tech._id}>
+                          {tech.name} ({tech.activeTickets || 0})
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td className="px-4 py-3 text-right font-mono">
+                    {new Date(t.createdAt).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -434,6 +559,14 @@ function CreateUserModal({ setShowCreateModal, setNewUser, createUser }) {
           onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
         />
 
+        {/* ✅ Password field */}
+        <input
+          type="password"
+          placeholder="Set Password"
+          className="w-full p-3 mb-4 rounded-xl border border-white/30 dark:border-white/10 bg-white/20 dark:bg-white/5 focus:ring-2 focus:ring-blue-500"
+          onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+        />
+
         <select
           className="w-full p-3 mb-6 rounded-xl border border-white/30 dark:border-white/10 bg-white/20 dark:bg-white/5"
           onChange={(e) => setNewUser(prev => ({ ...prev, role: e.target.value }))}
@@ -454,6 +587,7 @@ function CreateUserModal({ setShowCreateModal, setNewUser, createUser }) {
           Cancel
         </button>
       </div>
+
     </div>
   );
 }

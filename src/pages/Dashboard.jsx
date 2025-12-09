@@ -17,15 +17,18 @@ import axios from "axios";
 
 import { useEffect, useState } from "react";
 
+
+
 export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [showForm, setShowForm] = useState(false);
+
   const [activePage, setActivePage] = useState("dashboard");
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
   const [form, setForm] = useState({ title: "", description: "", priority: "Medium" });
   // ✅ EMAIL TICKET STATES
 const [sendEmail, setSendEmail] = useState(false);
-const [technicianEmail, setTechnicianEmail] = useState("");
+
 const [emailOptions, setEmailOptions] = useState({
   title: true,
   description: true,
@@ -33,7 +36,23 @@ const [emailOptions, setEmailOptions] = useState({
   ticketId: true,
 });
 
-  
+// const fetchFreeTechnicians = async () => {
+//   try {
+//     const token = localStorage.getItem("token");
+
+//     const res = await axios.get(
+//       "http://localhost:5000/api/tickets/technicians/free", // ✅ FIXED URL
+//       { headers: { Authorization: `Bearer ${token}` } }
+//     );
+
+//     setFreeTechnicians(res.data);
+//     console.log("✅ Free Technicians:", res.data); // optional debug
+//   } catch (err) {
+//     console.log("❌ Failed to fetch free technicians", err);
+//   }
+// };
+
+
 
   const fetchTickets = async () => {
     try {
@@ -63,12 +82,7 @@ const createTicket = async (e) => {
 
     await axios.post(
       "http://localhost:5000/api/tickets",
-      {
-        ...form,
-        sendEmail,
-        technicianEmail,
-        emailOptions,
-      },
+      form, // ✅ only title, description, priority
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -76,20 +90,9 @@ const createTicket = async (e) => {
 
     setShowForm(false);
     setForm({ title: "", description: "", priority: "Medium" });
-
-    // ✅ RESET EMAIL UI
-    setSendEmail(false);
-    setTechnicianEmail("");
-    setEmailOptions({
-      title: true,
-      description: true,
-      priority: true,
-      ticketId: true,
-    });
-
     fetchTickets();
-  } catch {
-    console.log("❌ Ticket creation failed");
+  } catch (err) {
+    console.log("❌ Ticket creation failed", err);
   }
 };
 
@@ -118,7 +121,7 @@ const createTicket = async (e) => {
           <h2 className="text-3xl font-extrabold mb-12 
             bg-gradient-to-r from-blue-700 to-indigo-600 
             dark:from-blue-300 dark:to-indigo-300 bg-clip-text text-transparent">
-            SetuHub
+            SAMADHAN
           </h2>
 
           <nav className="space-y-3">
@@ -137,10 +140,14 @@ const createTicket = async (e) => {
             />
 
             <SidebarItem 
-              icon={<PlusCircle size={18} />} 
-              label="Create Ticket" 
-              onClick={() => setShowForm(true)} 
-            />
+  icon={<PlusCircle size={18} />} 
+  label="Create Ticket" 
+  onClick={() => {
+    setShowForm(true);
+    // fetchFreeTechnicians(); // ✅ LOAD FREE TECHS WHEN MODAL OPENS
+  }} 
+/>
+
 
             <SidebarItem 
               icon={<UserRound size={18} />} 
@@ -319,33 +326,51 @@ const createTicket = async (e) => {
     value={form.description}
     onChange={(e) => setForm({ ...form, description: e.target.value })}
   ></textarea>
+<select
+  className="w-full p-3 rounded-xl border bg-white/30"
+  value={form.priority}
+  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+>
+  <option>High</option>
+  <option>Medium</option>
+  <option>Low</option>
+</select>
 
-  <select
-    className="w-full p-3 rounded-xl border bg-white/30"
-    value={form.priority}
-    onChange={(e) => setForm({ ...form, priority: e.target.value })}
-  >
-    {/* ✅ SEND TICKET TO TECHNICIAN EMAIL */}
-<label className="flex items-center gap-2 text-sm mt-2">
-  <input
-    type="checkbox"
-    checked={sendEmail}
-    onChange={(e) => setSendEmail(e.target.checked)}
-  />
-  Send ticket to technician via email
+
+  {/* ✅ EMAIL CHECKBOX */}
+ <label className="flex items-center gap-3 mt-3 text-sm font-medium">
+ <input
+  type="checkbox"
+  checked={sendEmail}
+  onChange={() => {
+    setSendEmail(!sendEmail);
+    // fetchFreeTechnicians(); // ✅ AUTO LOAD FREE TECHS
+  }}
+/>
+
+  Send ticket details to technician via Email
 </label>
 
 {sendEmail && (
-  <>
-    <input
-      type="email"
-      placeholder="Technician Email"
-      className="w-full p-3 rounded-xl border mt-2"
+  <div className="space-y-3 mt-3 p-3 rounded-xl bg-white/20 border">
+
+    {/* ✅ SUGGESTED TECHNICIANS DROPDOWN */}
+ {/* <select
+      className="w-full p-3 rounded-xl border bg-white/30"
       value={technicianEmail}
       onChange={(e) => setTechnicianEmail(e.target.value)}
       required
-    />
+    >
+      <option value="">Select Free Technician</option>
 
+      {freeTechnicians.map((tech) => (
+        <option key={tech._id} value={tech.email}>
+          {tech.name} — {tech.activeTickets} Active Tickets
+        </option>
+      ))}
+    </select>    */}
+
+    {/* ✅ CHECKBOX OPTIONS */}
     <div className="text-sm space-y-1 mt-2">
       <label>
         <input
@@ -354,10 +379,8 @@ const createTicket = async (e) => {
           onChange={() =>
             setEmailOptions({ ...emailOptions, title: !emailOptions.title })
           }
-        />{" "}
-        Include Title
+        /> Include Title
       </label>
-      <br />
 
       <label>
         <input
@@ -366,10 +389,8 @@ const createTicket = async (e) => {
           onChange={() =>
             setEmailOptions({ ...emailOptions, description: !emailOptions.description })
           }
-        />{" "}
-        Include Description
+        /> Include Description
       </label>
-      <br />
 
       <label>
         <input
@@ -378,10 +399,8 @@ const createTicket = async (e) => {
           onChange={() =>
             setEmailOptions({ ...emailOptions, priority: !emailOptions.priority })
           }
-        />{" "}
-        Include Priority
+        /> Include Priority
       </label>
-      <br />
 
       <label>
         <input
@@ -390,85 +409,14 @@ const createTicket = async (e) => {
           onChange={() =>
             setEmailOptions({ ...emailOptions, ticketId: !emailOptions.ticketId })
           }
-        />{" "}
-        Include Ticket ID
+        /> Include Ticket ID
       </label>
+
     </div>
-  </>
+  </div>
 )}
 
-    <option>High</option>
-    <option>Medium</option>
-    <option>Low</option>
-  </select>
 
-  {/* ✅ EMAIL CHECKBOX */}
-  <label className="flex items-center gap-3 mt-3 text-sm font-medium">
-    <input
-      type="checkbox"
-      checked={sendEmail}
-      onChange={() => setSendEmail(!sendEmail)}
-    />
-    Send ticket details to technician via Email
-  </label>
-
-  {/* ✅ SHOW EMAIL FIELDS ONLY IF CHECKED */}
-  {sendEmail && (
-    <div className="space-y-3 mt-3 p-3 rounded-xl bg-white/20 border">
-
-      <input
-        type="email"
-        required
-        placeholder="Technician Email Address"
-        className="w-full p-2 rounded-lg border"
-        value={technicianEmail}
-        onChange={(e) => setTechnicianEmail(e.target.value)}
-      />
-
-      <p className="text-sm font-semibold">Select what to send:</p>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={emailOptions.title}
-          onChange={() =>
-            setEmailOptions({ ...emailOptions, title: !emailOptions.title })
-          }
-        /> Title
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={emailOptions.description}
-          onChange={() =>
-            setEmailOptions({ ...emailOptions, description: !emailOptions.description })
-          }
-        /> Description
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={emailOptions.priority}
-          onChange={() =>
-            setEmailOptions({ ...emailOptions, priority: !emailOptions.priority })
-          }
-        /> Priority
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={emailOptions.ticketId}
-          onChange={() =>
-            setEmailOptions({ ...emailOptions, ticketId: !emailOptions.ticketId })
-          }
-        /> Ticket ID
-      </label>
-
-    </div>
-  )}
 
   {/* ✅ BUTTONS */}
   <div className="flex gap-3 pt-3">
@@ -586,7 +534,7 @@ function TicketCard({ t }) {
 
         <span><b>Priority:</b> {t.priority}</span>
         <span><b>ID:</b> {t._id}</span>
-        <span><b>Assigned:</b> {t.assignedTo || "Unassigned"}</span>
+        <span><b>Assigned:</b> {t.assignedTo?.name || "Unassigned"}</span>
 
         <span className="font-mono">
           <b>Created:</b> {new Date(t.createdAt).toLocaleString()}

@@ -42,6 +42,15 @@ export default function Chatbot() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // ✅ ✅ ✅ AUTO OPEN PDF IN NEW TAB (NO BLACK SCREEN)
+      if (res.data.openInNewTab === true) {
+        window.open(
+          "http://localhost:5173/Password%20Reset%20Manual.pdf",
+          "_blank",
+          "noopener,noreferrer"
+        );
+      }
+
       setTimeout(() => {
         setBotTyping(false);
         setMessages((prev) => [
@@ -98,7 +107,7 @@ export default function Chatbot() {
             </div>
           </div>
 
-          {/* ✅ ✅ ✅ MESSAGES WITH AUTO LINK + PDF FIX */}
+          {/* ✅ ✅ ✅ MESSAGES WITH SAFE PDF OPENING */}
           <div
             className={`flex-1 p-4 overflow-y-auto space-y-3
             ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}
@@ -115,22 +124,25 @@ export default function Chatbot() {
                 >
                   {m.text.split("\n").map((line, idx) => {
                     const isLink = line.includes("http");
-                    const safeLink = isLink ? encodeURI(line.trim()) : line;
 
                     return (
                       <p key={idx} className="mb-1 leading-relaxed break-words">
                         {isLink ? (
                           <a
-                            href={safeLink}
+                            href={line.trim()}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => {
                               e.preventDefault();
-                              window.open(safeLink, "_blank", "noopener,noreferrer");
+                              window.open(
+                                "http://localhost:5173/Password%20Reset%20Manual.pdf",
+                                "_blank",
+                                "noopener,noreferrer"
+                              );
                             }}
                             className="text-blue-600 underline hover:text-blue-800 font-medium"
                           >
-                            📄 Open Document
+                            📄 Open Password Reset Manual
                           </a>
                         ) : (
                           line

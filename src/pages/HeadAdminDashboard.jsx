@@ -27,10 +27,12 @@ export default function HeadAdminDashboard() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [newAdmin, setNewAdmin] = useState({
-    name: "",
-    email: "",
-    role: "admin",
-  });
+  name: "",
+  email: "",
+  role: "admin",
+  password: "", // ✅ MUST EXIST
+});
+
 
   const [createdCredentials, setCreatedCredentials] = useState({
     email: "",
@@ -102,31 +104,41 @@ export default function HeadAdminDashboard() {
     }
   };
 
-  const createAdmin = async () => {
-    try {
-      const res = await axios.post(
-        `${API_BASE}/api/headadmin/create-user`,
-        {
-          name: newAdmin.name,
-          email: newAdmin.email,
-          role: "admin",
-        },
-        getAuthConfig()
-      );
-
-      setCreatedCredentials({
+ const createAdmin = async () => {
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/headadmin/create-user`,
+      {
+        name: newAdmin.name,
         email: newAdmin.email,
-        password: res.data.password,
-      });
+        role: "admin",
+        password: newAdmin.password, // ✅ ✅ ✅ THIS WAS MISSING
+      },
+      getAuthConfig()
+    );
 
-      setShowCreateModal(false);
-      setShowSuccessModal(true);
+    setCreatedCredentials({
+      email: newAdmin.email,
+      password: newAdmin.password, // ✅ Show the same password you typed
+    });
 
-      fetchUsers();
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to create admin");
-    }
-  };
+    setShowCreateModal(false);
+    setShowSuccessModal(true);
+
+    // ✅ RESET FORM
+    setNewAdmin({
+      name: "",
+      email: "",
+      role: "admin",
+      password: "",
+    });
+
+    fetchUsers();
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to create admin");
+  }
+};
+
 
   const headAdminName = localStorage.getItem("name") || "Head Admin";
   const technicians = users.filter((u) => u.role === "technician");
@@ -460,14 +472,28 @@ function CreateAdminModal({ setShowCreateModal, setNewAdmin, createAdmin }) {
           type="text"
           placeholder="Full Name"
           className="w-full p-3 mb-4 rounded-xl border border-white/30 dark:border-white/10 bg-white/20 dark:bg-white/5 backdrop-blur-xl focus:ring-2 focus:ring-blue-500 transition"
-          onChange={(e) => setNewAdmin((prev) => ({ ...prev, name: e.target.value }))}
+          onChange={(e) =>
+            setNewAdmin((prev) => ({ ...prev, name: e.target.value }))
+          }
         />
 
         <input
           type="email"
           placeholder="Email Address"
           className="w-full p-3 mb-4 rounded-xl border border-white/30 dark:border-white/10 bg-white/20 dark:bg-white/5 backdrop-blur-xl focus:ring-2 focus:ring-blue-500 transition"
-          onChange={(e) => setNewAdmin((prev) => ({ ...prev, email: e.target.value }))}
+          onChange={(e) =>
+            setNewAdmin((prev) => ({ ...prev, email: e.target.value }))
+          }
+        />
+
+        {/* ✅ ✅ ✅ MANUAL PASSWORD FIELD ADDED ✅ ✅ ✅ */}
+        <input
+          type="password"
+          placeholder="Set Password"
+          className="w-full p-3 mb-4 rounded-xl border border-white/30 dark:border-white/10 bg-white/20 dark:bg-white/5 backdrop-blur-xl focus:ring-2 focus:ring-blue-500 transition"
+          onChange={(e) =>
+            setNewAdmin((prev) => ({ ...prev, password: e.target.value }))
+          }
         />
 
         <button
@@ -487,6 +513,7 @@ function CreateAdminModal({ setShowCreateModal, setNewAdmin, createAdmin }) {
     </div>
   );
 }
+
 
 /* ==================== SUCCESS POPUP ==================== */
 function SuccessPopup({ createdCredentials, setShowSuccessModal }) {
